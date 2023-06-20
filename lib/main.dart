@@ -1,115 +1,232 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:simple_time_card/models/times.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => Times(),),
+        ],
+        child: const MyApp(),
+      )
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false,
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final Times _times = Times();
+  late DateTime _currentDate;
+  String _newIdText = '';
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  late final Timer _timer;
+  final TextEditingController _textEditingController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    final now = DateTime.now();
+    _currentDate = DateTime(now.year, now.month, now.day);
+
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final day = context.select<Times, Map<String, Durations>>((v) => v.getDay(_currentDate));
+    final dayKeys = day.keys.toList();
+
+    print(dayKeys);
+
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () => setState(() {
+                    _currentDate = _currentDate.subtract(const Duration(days: 1));
+                  }),
+                  icon: const Icon(Icons.keyboard_arrow_left),
+                ),
+                const SizedBox(width: 12,),
+                Column(
+                  children: [
+                    Text(
+                      "${_currentDate.month}/${_currentDate.day}/${_currentDate.year}",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+                    ),
+                    const SizedBox(height: 4,),
+                    Text(
+                      "Current ID: ${context.select<Times, String?>((v) => v.currentId) ?? 'Nothing selected'}",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12,),
+                IconButton(
+                  onPressed: () => setState(() {
+                    _currentDate = _currentDate.add(const Duration(days: 1));
+                  }),
+                  icon: const Icon(Icons.keyboard_arrow_right),
+                ),
+              ],
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            const SizedBox(height: 18,),
+            ListView.builder(
+              itemCount: dayKeys.length,
+              shrinkWrap: true,
+              itemBuilder: (context, index) {
+                return EntryItem(currentDate: _currentDate, id: dayKeys[index]);
+              },
+            ),
+            const SizedBox(height: 6,),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 250,
+                  child: TextField(
+                    controller: _textEditingController,
+                    onChanged: (value) {
+                      _newIdText = value;
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'ID/name/etc.',
+                      contentPadding: EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(2.0)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8,),
+                IconButton(
+                  onPressed: () {
+                    final durationMap = _times.getDay(_currentDate);
+                    // Add if it doesn't contain
+                    if (!durationMap.containsKey(_newIdText)) {
+                      durationMap[_newIdText] = Durations();
+                      _textEditingController.clear();
+                    }
+                    final itemDurations = durationMap[_newIdText];
+                    _times.setState();
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.add),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+
+class EntryItem extends StatelessWidget {
+  const EntryItem({super.key, required this.currentDate, required this.id});
+
+  final DateTime currentDate;
+  final String id;
+
+  @override
+  Widget build(BuildContext context) {
+    final times = Provider.of<Times>(context);
+    final durations = times.days[currentDate]![id]!;
+
+    Duration adjustedDuration = durations.duration;
+    if (id == times.currentId) {
+      adjustedDuration += DateTime.now().difference(durations.times.last.dateTime);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SelectableText(
+                id,
+                style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 24),
+              ),
+              const SizedBox(width: 16,),
+              SelectableText(
+                "${adjustedDuration.inHours}.${(adjustedDuration.inMinutes / 60).toStringAsFixed(2).substring(2)} hrs",
+                style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 24),
+              ),
+              const SizedBox(width: 16,),
+              ElevatedButton(
+                onPressed: () {
+                  final now = DateTime.now();
+                  if (times.currentId == id) {
+                    times.currentId = null;
+                    durations.duration += now.difference(durations.times.last.dateTime);
+                    durations.times.add(Punch(PunchType.punchOut, now));
+                  } else {
+                    if (times.currentId != null) {
+                      final otherDurations = times.days[currentDate]![times.currentId]!;
+                      otherDurations.duration += now.difference(otherDurations.times.last.dateTime);
+                      otherDurations.times.add(Punch(PunchType.punchOut, now));
+                    }
+
+                    times.currentId = id;
+
+                    durations.times.add(Punch(PunchType.punchIn, now));
+                  }
+                  times.setState();
+                },
+                child: Text(times.currentId == id ? 'Stop' : 'Start'),
+              ),
+            ],
+          ),
+          SelectableText(
+            durations.times.fold('', (previousValue, element) => previousValue +=
+            "${previousValue.isNotEmpty ? ', ' : ''}${element.punchType == PunchType.punchIn ? 'In' : 'Out'}: "
+                "${element.dateTime.hour > 12 ? element.dateTime.hour - 12 : element.dateTime.hour + 1}:${element.dateTime.minute.toString().padLeft(2, '0')} "
+                "${element.dateTime.hour >= 12 ? 'PM' : 'AM'}"),
+            style: const TextStyle(fontSize: 18),
+          ),
+        ],
+      ),
     );
   }
 }
