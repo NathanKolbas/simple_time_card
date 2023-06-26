@@ -221,7 +221,7 @@ class EntryItem extends StatelessWidget {
           SelectableText(
             durations.times.fold('', (previousValue, element) => previousValue +=
             "${previousValue.isNotEmpty ? ', ' : ''}${element.punchType == PunchType.punchIn ? 'In' : 'Out'}: "
-                "${element.dateTime.hour > 12 ? element.dateTime.hour - 12 : element.dateTime.hour + 1}:${element.dateTime.minute.toString().padLeft(2, '0')} "
+                "${element.dateTime.hour > 12 ? element.dateTime.hour - 12 : element.dateTime.hour == 0 ? 12 : element.dateTime.hour}:${element.dateTime.minute.toString().padLeft(2, '0')} "
                 "${element.dateTime.hour >= 12 ? 'PM' : 'AM'}"),
             style: const TextStyle(fontSize: 18),
           ),
