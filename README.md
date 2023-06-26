@@ -1,6 +1,8 @@
 # simple_time_card
 
-A simple application to easily track hours spent during the work day so you don't have to
+A simple application to easily track hours spent during the work day so you don't have to  
+
+Link to GitHub pages: https://nathankolbas.github.io/simple_time_card/pages/
 
 ## Getting Started
 
